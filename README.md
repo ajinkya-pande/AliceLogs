@@ -19,7 +19,7 @@ AliceLogs is a Discord bot designed to log various events happening in a server.
 
 1. Clone this repository to your local machine:
 ```
-git clone https://github.com/yourusername/AliceLogs.git
+git clone https://github.com/watermelodev/AliceLogs.git
 cd AliceLogs
 ```
 
