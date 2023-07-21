@@ -1,1 +1,2 @@
 # AliceLogs
+Discord.py logs
