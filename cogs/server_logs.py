@@ -4,32 +4,9 @@ import json
 import asyncio
 from datetime import datetime
 import os
+from backend.server import hidden_users, print_event_message
 from colorama import Fore, Back, Style
 from discord.ext import commands
-
-def hidden_users(self):
-    with open('users.json', 'r') as f:
-        users = json.load(f)
-    return users['hidden']
-
-def print_event_message(self, time, author_name, message):
-    now = datetime.now()
-    time = now.strftime("%H:%M")
-
-    lower_author_name = author_name.name.lower()  # Directly work with the string representation of the username
-    contains_bad_word = any(bad_word in lower_author_name for bad_word in self.bad_words)
-    try:
-        if contains_bad_word:
-            filtered_author_name = re.sub(r'\b(?:' + '|'.join(map(re.escape, self.bad_words)) + r')\b', '#####', author_name, flags=re.IGNORECASE)
-            print(Fore.GREEN + f"{time} - {filtered_author_name} {message}" + Fore.RESET)
-        elif author_name.name in hidden_users(self):  # Compare with the list of hidden usernames
-            print(Fore.GREEN + f"{time} - Hidden {message}" + Fore.RESET)
-        else:
-            print(Fore.GREEN + f"{time} - {author_name.name} {message}" + Fore.RESET)
-    except Exception as e:
-        print(f"{Fore.RED}Error: {e}{Fore.RESET}")
-
-
 
 class Logs(commands.Cog):
     def __init__(self, client):
@@ -137,6 +114,11 @@ class Logs(commands.Cog):
         except Exception as e:
             print(f"{Fore.RED}Error: {e}{Fore.RESET}")
 
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        now = datetime.now()
+        time = now.strftime("%H:%M")
+        print_event_message(self, time, message.author, "sent a message")
 
     @commands.Cog.listener()
     async def on_message_delete(self, message):
@@ -153,7 +135,7 @@ class Logs(commands.Cog):
     @commands.Cog.listener()
     async def on_typing(self, channel, user, when):
         now = datetime.now()
-        time = now.strftime("%H:%M")        
+        time = now.strftime("%H:%M")     
         print_event_message(self, time, user, "is typing")
 
     @commands.Cog.listener()
@@ -342,6 +324,16 @@ class Logs(commands.Cog):
         now = datetime.now()
         time = now.strftime("%H:%M")
         print_event_message(self, time, thread, "updated a thread")
+
+    #log when boosted
+    @commands.Cog.listener()
+    async def on_member_update(self, before, after):
+        now = datetime.now()
+        time = now.strftime("%H:%M")
+        if before.premium_since is None and after.premium_since is not None:
+            print_event_message(self, time, before, "boosted a server")
+        elif before.premium_since is not None and after.premium_since is None:
+            print_event_message(self, time, before, "unboosted a server")
 
 async def setup(client):
     await client.add_cog(Logs(client))

@@ -4,14 +4,19 @@ from discord.ext import commands
 import os
 import asyncio
 import random
-
+import socket
+import concurrent.futures
 from colorama import Fore, Back, Style
 from discord import app_commands, utils
 from discord.ext import commands, tasks
 from itertools import cycle
 
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.bind((socket.gethostname(), 1234))
+s.listen(5)
+
 dotenv.load_dotenv()
-token = os.getenv('TOKEN')
+discord_token = os.getenv('DISCORD_BOT_TOKEN')
 
 client = commands.Bot(command_prefix = '!', intents=discord.Intents.all())
 client.remove_command('help')
@@ -67,6 +72,6 @@ async def main():
             await load()
         except Exception as e:
             print(f"{Fore.RED}Error loading cogs: {e}")
-        await client.start(token)
+        await client.start(discord_token)
 
 asyncio.run(main())
