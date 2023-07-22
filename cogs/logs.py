@@ -138,9 +138,10 @@ class Logs(commands.Cog):
         now = datetime.now()
         time = now.strftime("%H:%M")
         try:
-            print_event_message(self, time, message.author, "sent a message")
+            self.print_event_message(time, guild.name, "left a server")  # Assuming you want to print the guild name
         except Exception as e:
             print(f"{Fore.RED}Error: {e}{Fore.RESET}")
+
 
     @commands.Cog.listener()
     async def on_message_delete(self, message):
