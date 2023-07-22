@@ -30,6 +30,7 @@ def print_event_message(self, time, author_name, message):
 def twitch_event_msg(self, time, author_name, message):
     with open("data/bad-words.txt") as file:
             self.bad_words = [bad_word.strip().lower() for bad_word in file.readlines()]
+            
     now = datetime.now()
     time = now.strftime("%H:%M")
 

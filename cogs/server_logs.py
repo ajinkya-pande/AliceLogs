@@ -3,8 +3,7 @@ import re
 import json
 import asyncio
 from datetime import datetime
-import os
-from backend.log import hidden_users, print_event_message
+from backend.log import hidden_users, print_event_message, twitch_event_msg
 from colorama import Fore, Back, Style
 from discord.ext import commands
 
