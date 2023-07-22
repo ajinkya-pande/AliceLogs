@@ -11,10 +11,6 @@ from discord import app_commands, utils
 from discord.ext import commands, tasks
 from itertools import cycle
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind((socket.gethostname(), 1234))
-s.listen(5)
-
 dotenv.load_dotenv()
 discord_token = os.getenv('DISCORD_BOT_TOKEN')
 
