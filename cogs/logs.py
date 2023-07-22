@@ -127,14 +127,14 @@ class Logs(commands.Cog):
         print_event_message(self, time, user, "was kicked from a server")
 
     @commands.Cog.listener()
-    async def on_member_update(self, before, after):
+    async def on_voice_state_update(self, member, before, after):
         now = datetime.now()
         time = now.strftime("%H:%M")
         print_event_message(self, time, before, "updated their profile")
 
     # Message-related Events
     @commands.Cog.listener()
-    async def on_message(self, message):
+    async def on_guild_remove(self, guild):
         now = datetime.now()
         time = now.strftime("%H:%M")
         try:
