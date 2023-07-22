@@ -1,57 +1,90 @@
 import discord
+import re
+import json
 import asyncio
 from datetime import datetime
 import os
 from colorama import Fore, Back, Style
 from discord.ext import commands
 
+def hidden_users(self):
+    with open('users.json', 'r') as f:
+        users = json.load(f)
+    return users['hidden']
+
+def print_event_message(self, time, author_name, message):
+    now = datetime.now()
+    time = now.strftime("%H:%M")
+    lower_author_name = author_name.name.lower()  # Directly work with the string representation of the username
+    contains_bad_word = any(bad_word in lower_author_name for bad_word in self.bad_words)
+    try:
+        if contains_bad_word:
+            filtered_author_name = re.sub(r'\b(?:' + '|'.join(map(re.escape, self.bad_words)) + r')\b', '#####', author_name, flags=re.IGNORECASE)
+            print(Fore.GREEN + f"{time} - {filtered_author_name} {message}" + Fore.RESET)
+        elif author_name.name in hidden_users(self):  # Compare with the list of hidden usernames
+            print(Fore.GREEN + f"{time} - Hidden {message}" + Fore.RESET)
+        else:
+            print(Fore.GREEN + f"{time} - {author_name.name} {message}" + Fore.RESET)
+    except Exception as e:
+        print(f"{Fore.RED}Error: {e}{Fore.RESET}")
+
+
+
 class Logs(commands.Cog):
     def __init__(self, client):
         self.client = client
+        with open("data/bad-words.txt") as file:
+            self.bad_words = [bad_word.strip().lower() for bad_word in file.readlines()]
     
     @commands.Cog.listener()
     async def on_ready(self):
         print("Logs cog loaded")
-        
-    #load bad-words.txt from data folder
-    with open("data/bad-words.txt") as file:
-        bad_words = [bad_word.strip().lower() for bad_word in file.readlines()]
 
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         now = datetime.now()
         time = now.strftime("%H:%M")
-         # if command has local error handler, return
-        if hasattr(ctx.command, 'on_error'):
-            return
-        
-        # get the original exception
-        error = getattr(error, 'original', error)
+        def print_error_message(ctx, error, error_message):
+            now = datetime.now()
+            time = now.strftime("%H:%M")
+            author_name = ctx.author.name
+            lower_author_name = author_name.lower()
+            contains_bad_word = any(bad_word in lower_author_name for bad_word in self.bad_words)
+            
+            if contains_bad_word:
+                filtered_author_name = re.sub(r'\b(?:' + '|'.join(map(re.escape, self.bad_words)) + r')\b', '#####', author_name, flags=re.IGNORECASE)
+                print(Fore.RED + f"{time} - {filtered_author_name} {error_message}" + Fore.RESET)
+            else:
+                if author_name.id in hidden_users():
+                    print(Fore.RED + f"{time} - Hidden {error_message}" + Fore.RESET)
+                else:
+                    print(Fore.RED + f"{time} - {author_name} {error_message}" + Fore.RESET)
 
         if isinstance(error, commands.CommandNotFound):
-            print(Fore.RED + f"{time} - {ctx.author.name} tried to use a command that does not exist" + Fore.RESET)
+            print_error_message(ctx, error, "tried to use a command that does not exist")
 
-        if isinstance(error, commands.MissingPermissions):
-            print(Fore.RED + f"{time} - {ctx.author.name} tried to use a command that they do not have permission to use" + Fore.RESET)
+        elif isinstance(error, commands.MissingPermissions):
+            print_error_message(ctx, error, "tried to use a command that they do not have permission to use")
 
-        if isinstance(error, commands.MissingRequiredArgument):
-            print(Fore.RED + f"{time} - {ctx.author.name} tried to use a command without the required arguments" + Fore.RESET)
+        elif isinstance(error, commands.MissingRequiredArgument):
+            print_error_message(ctx, error, "tried to use a command without the required arguments")
 
-        if isinstance(error, commands.BadArgument):
-            print(Fore.RED + f"{time} - {ctx.author.name} tried to use a command with a bad argument" + Fore.RESET)
+        elif isinstance(error, commands.BadArgument):
+            print_error_message(ctx, error, "tried to use a command with a bad argument")
 
-        if isinstance(error, commands.CommandOnCooldown):
-            print(Fore.RED + f"{time} - {ctx.author.name} tried to use a command that is on cooldown" + Fore.RESET)
+        elif isinstance(error, commands.CommandOnCooldown):
+            print_error_message(ctx, error, "tried to use a command that is on cooldown")
 
-        if isinstance(error, commands.NotOwner):
-            print(Fore.RED + f"{time} - {ctx.author.name} tried to use a command that only the owner can use" + Fore.RESET)
+        elif isinstance(error, commands.NotOwner):
+            print_error_message(ctx, error, "tried to use a command that only the owner can use")
 
-        if isinstance(error, commands.MissingRole):
-            print(Fore.RED + f"{time} - {ctx.author.name} tried to use a command that requires a role that they do not have" + Fore.RESET)
+        elif isinstance(error, commands.MissingRole):
+            print_error_message(ctx, error, "tried to use a command that requires a role they do not have")
 
-        if isinstance(error, commands.BotMissingPermissions):
-            print(Fore.RED + f"{time} - {ctx.author.name} tried to use a command that the bot does not have permission to use" + Fore.RESET)
+        elif isinstance(error, commands.BotMissingPermissions):
+            print_error_message(ctx, error, "tried to use a command that the bot does not have permission to use")
+
         else:
             print(Fore.RED + f"{time} - Error: {error}" + Fore.RESET)
     
@@ -59,442 +92,257 @@ class Logs(commands.Cog):
     async def on_slash_command(self, ctx):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print(Fore.GREEN + f"{time} - {ctx.author.name} used a slash command" + Fore.RESET)
+        print_event_message(self, time, ctx.author, "used a slash command")
 
-    # welcome
+    # Member-related Events
     @commands.Cog.listener()
     async def on_member_join(self, member):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print(Fore.GREEN + f"{time} - {member} has joined a server" + Fore.RESET)
-    
-    # leave
+        print_event_message(self, time, member, "joined a server")
+
+
     @commands.Cog.listener()
     async def on_member_remove(self, member):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print(Fore.RED + f"{time} - {member} has left a server" + Fore.RESET)
-    
-    # log when the bot joins a server
-    @commands.Cog.listener()
-    async def on_guild_join(self, guild):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.GREEN + f"{time} - Connecting to new server..." + Fore.RESET)
-        await asyncio.sleep(3)
-        print(Fore.GREEN + f"{time} - Connected!" + Fore.RESET)
+        print_event_message(self, time, member, "left a server")
 
-    # log when the bot leaves a server
-    @commands.Cog.listener()
-    async def on_guild_remove(self, guild):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.RED + f"{time} - Disconnected from server" + Fore.RESET)
-
-    # log when a message is deleted
-    @commands.Cog.listener()
-    async def on_message_delete(self, message):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.RED + f"{time} - {message.author.name}'s message was deleted" + Fore.RESET)
-
-    # log when a message is edited
-    @commands.Cog.listener()
-    async def on_message_edit(self, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - {before.author.name}'s message was edited" + Fore.RESET)
-    
-    # log when someone is banned
     @commands.Cog.listener()
     async def on_member_ban(self, guild, user):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print(Fore.RED + f"{time} - {user.name} was banned" + Fore.RESET)
+        print_event_message(self, time, user, "was banned from a server")
 
-    # log when someone is unbanned
     @commands.Cog.listener()
     async def on_member_unban(self, guild, user):
         now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.GREEN + f"{time} - {user.name} was unbanned" + Fore.RESET)
+        time = now.strftime("%H:%M") 
+        print_event_message(self, time, user, "was unbanned from a server")
 
-    # log when someone is kicked
     @commands.Cog.listener()
     async def on_member_kick(self, guild, user):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print(Fore.RED + f"{time} - {user.name} was kicked" + Fore.RESET)
+        print_event_message(self, time, user, "was kicked from a server")
 
-    # log when someone joins a voice channel
-    @commands.Cog.listener()
-    async def on_voice_state_update(self, member, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        if before.channel is None:
-            print(Fore.GREEN + f"{time} - {member.name} joined {after.channel.name}" + Fore.RESET)
-        elif after.channel is None:
-            print(Fore.RED + f"{time} - {member.name} left {before.channel.name}" + Fore.RESET)
-        else:
-            print(Fore.YELLOW + f"{time} - {member.name} moved from {before.channel.name} to {after.channel.name}" + Fore.RESET)
-
-    @commands.Cog.listener()
-    async def on_typing(self, channel, user, when):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - {user.name} started typing in {channel.name}" + Fore.RESET)
-
-    # log when someone reacts to a message
-    @commands.Cog.listener()
-    async def on_reaction_add(self, reaction, user):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - {user.name} reacted to a message" + Fore.RESET)
-
-    # log when someone removes a reaction from a message
-    @commands.Cog.listener()
-    async def on_reaction_remove(self, reaction, user):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.RED + f"{time} - {user.name} removed a reaction from a message" + Fore.RESET)
-
-    # log when someone removes all reactions from a message
-    @commands.Cog.listener()
-    async def on_reaction_clear(self, message, reactions):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.RED + f"{time} - All reactions were removed from a message" + Fore.RESET)
-
-    # log when someone updates their status
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - {before.name} updated their status" + Fore.RESET)
+        print_event_message(self, time, before, "updated their profile")
 
-    # log when someone updates their nickname
-    @commands.Cog.listener()
-    async def on_member_update(self, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - {before.name} updated their nickname" + Fore.RESET)
-
-    # log when someone updates their role
-    @commands.Cog.listener()
-    async def on_member_update(self, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - {before.name} updated their role" + Fore.RESET)
-
-    # log when someone updates their activity
-    @commands.Cog.listener()
-    async def on_member_update(self, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - {before.name} updated their activity" + Fore.RESET)
-
-    # log when someone updates their avatar
-    @commands.Cog.listener()
-    async def on_user_update(self, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.GREEN + f"{time} - {before.name} updated their avatar" + Fore.RESET)
-
-    # log when someone updates their username
-    @commands.Cog.listener()
-    async def on_user_update(self, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.GREEN + f"{time} - {before.name} updated their username to {after.name}" + Fore.RESET)
-    
-    # log when channel is created
-    @commands.Cog.listener()
-    async def on_guild_channel_create(self, channel):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.GREEN + f"{time} - {channel.name} was created" + Fore.RESET)
-
-    # log when channel is deleted
-    @commands.Cog.listener()
-    async def on_guild_channel_delete(self, channel):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.RED + f"{time} - {channel.name} was deleted" + Fore.RESET)
-
-    # log when channel is updated
-    @commands.Cog.listener()
-    async def on_guild_channel_update(self, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - {before.name} was updated" + Fore.RESET)
-
-    # log when role is created
-    @commands.Cog.listener()
-    async def on_guild_role_create(self, role):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.GREEN + f"{time} - {role.name} was created" + Fore.RESET)
-
-    # log when role is deleted
-    @commands.Cog.listener()
-    async def on_guild_role_delete(self, role):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.RED + f"{time} - {role.name} was deleted" + Fore.RESET)
-
-    # log when role is updated
-    @commands.Cog.listener()
-    async def on_guild_role_update(self, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - {before.name} was updated" + Fore.RESET)
-
-    # log when emoji is created
-    @commands.Cog.listener()
-    async def on_guild_emojis_update(self, guild, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.GREEN + f"{time} - {before.name} was created" + Fore.RESET)
-
-    # log when emoji is deleted
-    @commands.Cog.listener()
-    async def on_guild_emojis_update(self, guild, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.RED + f"{time} - {before.name} was deleted" + Fore.RESET)
-
-    # log when emoji is updated
-    @commands.Cog.listener()
-    async def on_guild_emojis_update(self, guild, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - {before.name} was updated" + Fore.RESET)
-
+    # Message-related Events
     @commands.Cog.listener()
     async def on_message(self, message):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print(Fore.GREEN + f"{time} - {message.author.name} sent a message" + Fore.RESET)
+        try:
+            print_event_message(self, time, message.author, "sent a message")
+        except Exception as e:
+            print(f"{Fore.RED}Error: {e}{Fore.RESET}")
 
-    # log when invite is created
+    @commands.Cog.listener()
+    async def on_message_delete(self, message):
+        now = datetime.now()
+        time = now.strftime("%H:%M")       
+        print_event_message(self, time, message.author, "deleted a message")
+
+    @commands.Cog.listener()
+    async def on_message_edit(self, before, after):
+        now = datetime.now()
+        time = now.strftime("%H:%M")
+        print_event_message(self, time, before.author, "edited a message")
+
+    @commands.Cog.listener()
+    async def on_typing(self, channel, user, when):
+        now = datetime.now()
+        time = now.strftime("%H:%M")        
+        print_event_message(self, time, user, "is typing")
+
+    @commands.Cog.listener()
+    async def on_reaction_add(self, reaction, user):
+        now = datetime.now()
+        time = now.strftime("%H:%M")    
+        print_event_message(self, time, user, "added a reaction")
+
+    @commands.Cog.listener()
+    async def on_reaction_remove(self, reaction, user):
+        now = datetime.now()
+        time = now.strftime("%H:%M")
+        print_event_message(self, time, user, "removed a reaction")
+
+    @commands.Cog.listener()
+    async def on_reaction_clear(self, message, reactions):
+        now = datetime.now()
+        time = now.strftime("%H:%M")
+        print_event_message(self, time, message.author, "cleared a reaction")
+
+    # Voice-related Events
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member, before, after):
+        now = datetime.now()
+        time = now.strftime("%H:%M")
+        print_event_message(self, time, member, "updated their voice state")
+
+    # Channel-related Events
+    @commands.Cog.listener()
+    async def on_guild_channel_create(self, channel):
+        now = datetime.now()
+        time = now.strftime("%H:%M")
+        print_event_message(self, time, channel, "created a channel")
+
+    @commands.Cog.listener()
+    async def on_guild_channel_delete(self, channel):
+        now = datetime.now()
+        time = now.strftime("%H:%M")
+        print_event_message(self, time, channel, "deleted a channel")
+
+    @commands.Cog.listener()
+    async def on_guild_channel_update(self, before, after):
+        now = datetime.now()
+        time = now.strftime("%H:%M")
+        print_event_message(self, time, before, "updated a channel")
+
+    # Role-related Events
+    @commands.Cog.listener()
+    async def on_guild_role_create(self, role):
+        now = datetime.now()
+        time = now.strftime("%H:%M")
+        print_event_message(self, time, role, "created a role")
+
+    @commands.Cog.listener()
+    async def on_guild_role_delete(self, role):
+        now = datetime.now()
+        time = now.strftime("%H:%M")
+        print_event_message(self, time, role, "deleted a role")
+
+    @commands.Cog.listener()
+    async def on_guild_role_update(self, before, after):
+        now = datetime.now()
+        time = now.strftime("%H:%M")
+        print_event_message(self, time, before, "updated a role")
+
+    # Emoji-related Events
+    @commands.Cog.listener()
+    async def on_guild_emojis_update(self, guild, before, after):
+        now = datetime.now()
+        time = now.strftime("%H:%M")
+        print_event_message(self, time, guild, "updated an emoji")
+
+    # Server-related Events
+    @commands.Cog.listener()
+    async def on_guild_join(self, guild):
+        now = datetime.now()
+        time = now.strftime("%H:%M")
+        print_event_message(self, time, guild, "joined a server")
+
+    @commands.Cog.listener()
+    async def on_guild_remove(self, guild):
+        now = datetime.now()
+        time = now.strftime("%H:%M")
+        print_event_message(self, time, guild, "left a server")
+
+    @commands.Cog.listener()
+    async def on_guild_update(self, before, after):
+        now = datetime.now()
+        time = now.strftime("%H:%M")
+        print_event_message(self, time, before, "updated a server")
+
+    # Invite-related Events
     @commands.Cog.listener()
     async def on_invite_create(self, invite):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print(Fore.GREEN + f"{time} - {invite.code} was created" + Fore.RESET)
+        print_event_message(self, time, invite.inviter, "created an invite")
 
-    # log when invite is deleted
     @commands.Cog.listener()
     async def on_invite_delete(self, invite):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print(Fore.RED + f"{time} - {invite.code} was deleted" + Fore.RESET)
+        print_event_message(self, time, invite.inviter, "deleted an invite")
 
-    # log when webhook is created
+    # Webhook-related Events
     @commands.Cog.listener()
     async def on_webhooks_update(self, channel):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print(Fore.GREEN + f"{time} - {channel.name} was created" + Fore.RESET)
+        print_event_message(self, time, channel, "updated a webhook")
 
-    # log when webhook is deleted
-    @commands.Cog.listener()
-    async def on_webhooks_update(self, channel):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.RED + f"{time} - {channel.name} was deleted" + Fore.RESET)
-
-    # log when webhook is updated
-    @commands.Cog.listener()
-    async def on_webhooks_update(self, channel):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - {channel.name} was updated" + Fore.RESET)
-
-    # log when integration is created
+    # Integration-related Events
     @commands.Cog.listener()
     async def on_integration_create(self, integration):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print(Fore.GREEN + f"{time} - {integration.name} was created" + Fore.RESET)
+        print_event_message(self, time, integration, "created an integration")
 
-    # log when integration is deleted
     @commands.Cog.listener()
     async def on_integration_delete(self, integration):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print(Fore.RED + f"{time} - {integration.name} was deleted" + Fore.RESET)
+        print_event_message(self, time, integration, "deleted an integration")
 
-    # log when integration is updated
     @commands.Cog.listener()
     async def on_integration_update(self, integration):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - {integration.name} was updated" + Fore.RESET)
+        print_event_message(self, time, integration, "updated an integration")
 
-    # log when stage instance is created
+    # Stage-related Events
     @commands.Cog.listener()
     async def on_stage_instance_create(self, stage_instance):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print(Fore.GREEN + f"{time} - {stage_instance.name} was created" + Fore.RESET)
+        print_event_message(self, time, stage_instance, "created a stage instance")
 
-    # log when stage instance is deleted
     @commands.Cog.listener()
     async def on_stage_instance_delete(self, stage_instance):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print(Fore.RED + f"{time} - {stage_instance.name} was deleted" + Fore.RESET)
+        print_event_message(self, time, stage_instance, "deleted a stage instance")
 
-    # log when stage instance is updated
     @commands.Cog.listener()
     async def on_stage_instance_update(self, stage_instance):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - {stage_instance.name} was updated" + Fore.RESET)
+        print_event_message(self, time, stage_instance, "updated a stage instance")
 
-    # log when thread is created
+    # Thread-related Events
     @commands.Cog.listener()
     async def on_thread_create(self, thread):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print(Fore.GREEN + f"{time} - {thread.name} was created" + Fore.RESET)
+        print_event_message(self, time, thread, "created a thread")
 
-    # log when thread is deleted
     @commands.Cog.listener()
     async def on_thread_delete(self, thread):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print(Fore.RED + f"{time} - {thread.name} was deleted" + Fore.RESET)
+        print_event_message(self, time, thread, "deleted a thread")
 
-    # log when thread is updated
     @commands.Cog.listener()
     async def on_thread_update(self, thread):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - {thread.name} was updated" + Fore.RESET)
+        print_event_message(self, time, thread, "updated a thread")
 
-    # log when thread member is created
     @commands.Cog.listener()
     async def on_thread_member_join(self, thread):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print(Fore.GREEN + f"{time} - {thread.name} was created" + Fore.RESET)
+        print_event_message(self, time, thread, "joined a thread")
 
-    # log when thread member is deleted
     @commands.Cog.listener()
     async def on_thread_member_leave(self, thread):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print(Fore.RED + f"{time} - {thread.name} was deleted" + Fore.RESET)
+        print_event_message(self, time, thread, "left a thread")
 
-    # log when thread member is updated
     @commands.Cog.listener()
     async def on_thread_member_update(self, thread):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - {thread.name} was updated" + Fore.RESET)
-
-    # log when server name is updated
-    @commands.Cog.listener()
-    async def on_guild_update(self, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - Server name was updated" + Fore.RESET)
-
-    # log when server icon is updated
-    @commands.Cog.listener()
-    async def on_guild_update(self, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - Server icon was updated" + Fore.RESET)
-
-    # log when server splash is updated
-    @commands.Cog.listener()
-    async def on_guild_update(self, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - Server splash was updated" + Fore.RESET)
-
-    # log when server region is updated
-    @commands.Cog.listener()
-    async def on_guild_update(self, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - Server region was updated" + Fore.RESET)
-
-    # log when server afk channel is updated
-    @commands.Cog.listener()
-    async def on_guild_update(self, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - Server afk channel was updated" + Fore.RESET)
-
-    # log when server afk timeout is updated
-    @commands.Cog.listener()
-    async def on_guild_update(self, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - Server afk timeout was updated" + Fore.RESET)
-
-    # log when server verification level is updated
-    @commands.Cog.listener()
-    async def on_guild_update(self, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - Server verification level was updated" + Fore.RESET)
-
-    # log when server default notifications are updated
-    @commands.Cog.listener()
-    async def on_guild_update(self, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - Server default notifications were updated" + Fore.RESET)
-
-    # log when server explicit content filter is updated
-    @commands.Cog.listener()
-    async def on_guild_update(self, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print(Fore.YELLOW + f"{time} - Server explicit content filter was updated" + Fore.RESET)
-
-    # log when server vanity url is updated
-    @commands.Cog.listener()
-    async def on_guild_update(self, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        if before.vanity_url_code is None:
-            print(Fore.GREEN + f"{time} - Server vanity url was updated" + Fore.RESET)
-        elif after.vanity_url_code is None:
-            print(Fore.RED + f"{time} - Server vanity url was removed" + Fore.RESET)
-        else:
-            print(Fore.YELLOW + f"{time} - Server vanity url was updated" + Fore.RESET)
-
-    # log when server description is updated
-    @commands.Cog.listener()
-    async def on_guild_update(self, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        if before.description is None:
-            print(Fore.GREEN + f"{time} - Server description was updated" + Fore.RESET)
-        elif after.description is None:
-            print(Fore.RED + f"{time} - Server description was removed" + Fore.RESET)
-        else:
-            print(Fore.YELLOW + f"{time} - Server description was updated" + Fore.RESET)
-
-    # log when server banner is updated
-    @commands.Cog.listener()
-    async def on_guild_update(self, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        if before.banner is None:
-            print(Fore.GREEN + f"{time} - Server banner was updated" + Fore.RESET)
-        elif after.banner is None:
-            print(Fore.RED + f"{time} - Server banner was removed" + Fore.RESET)
-        else:
-            print(Fore.YELLOW + f"{time} - Server banner was updated" + Fore.RESET)
-
-        
+        print_event_message(self, time, thread, "updated a thread")
 
 async def setup(client):
     await client.add_cog(Logs(client))
