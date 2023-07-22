@@ -15,6 +15,7 @@ def hidden_users(self):
 def print_event_message(self, time, author_name, message):
     now = datetime.now()
     time = now.strftime("%H:%M")
+
     lower_author_name = author_name.name.lower()  # Directly work with the string representation of the username
     contains_bad_word = any(bad_word in lower_author_name for bad_word in self.bad_words)
     try:
@@ -126,12 +127,6 @@ class Logs(commands.Cog):
         time = now.strftime("%H:%M")
         print_event_message(self, time, user, "was kicked from a server")
 
-    @commands.Cog.listener()
-    async def on_voice_state_update(self, member, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print_event_message(self, time, before, "updated their profile")
-
     # Message-related Events
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
@@ -182,9 +177,12 @@ class Logs(commands.Cog):
     # Voice-related Events
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
-        now = datetime.now()
-        time = now.strftime("%H:%M")
-        print_event_message(self, time, member, "updated their voice state")
+        try:
+            now = datetime.now()
+            time = now.strftime("%H:%M")
+            print_event_message(self, time, member, "updated their voice state")
+        except Exception as e:
+            print(f"{Fore.RED}Error: {e}{Fore.RESET}")
 
     # Channel-related Events
     @commands.Cog.listener()
