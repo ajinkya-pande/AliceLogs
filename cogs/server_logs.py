@@ -4,7 +4,7 @@ import json
 import asyncio
 from datetime import datetime
 import os
-from backend.server import hidden_users, print_event_message
+from backend.log import hidden_users, print_event_message
 from colorama import Fore, Back, Style
 from discord.ext import commands
 
@@ -118,7 +118,10 @@ class Logs(commands.Cog):
     async def on_message(self, message):
         now = datetime.now()
         time = now.strftime("%H:%M")
-        print_event_message(self, time, message.author, "sent a message")
+        try:
+            print_event_message(self, time, message.author, "sent a message")
+        except Exception as e:
+            print(f"{Fore.RED}Error: {e}{Fore.RESET}")
 
     @commands.Cog.listener()
     async def on_message_delete(self, message):

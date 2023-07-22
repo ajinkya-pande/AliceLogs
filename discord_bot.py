@@ -4,7 +4,6 @@ from discord.ext import commands
 import os
 import asyncio
 import random
-import socket
 import concurrent.futures
 from colorama import Fore, Back, Style
 from discord import app_commands, utils

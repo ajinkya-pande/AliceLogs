@@ -2,7 +2,9 @@ import socket
 from colorama import Fore, Back, Style
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((socket.gethostname(), 2020))
+HOST = "127.0.0.1"
+PORT = 5551
+s.connect((HOST, PORT))
 
 alicelogs = """
 ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
