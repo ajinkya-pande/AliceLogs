@@ -15,7 +15,7 @@ class CMDs(commands.Cog):
     @commands.command(name="hide", description="hide your name in logs")
     async def hide_cmd(self, ctx):
         # open users.json
-        with open('/home/watermelo/Desktop/AliceBot/AliceLogs/data/users.json', 'r') as f:
+        with open('data/users.json', 'r') as f:
             users = json.load(f)
         # if user is already hidden
         if ctx.author.name in users['hidden']:
@@ -26,7 +26,7 @@ class CMDs(commands.Cog):
             # add user to hidden
             users['hidden'].append(ctx.author.name)
             # write to users.json
-            with open('/home/watermelo/Desktop/AliceBot/AliceLogs/data/users.json', 'w') as f:
+            with open('data/users.json', 'w') as f:
                 json.dump(users, f, indent=4)
             embed = discord.Embed(title="Success", description="You are now hidden!", color=0x00FF00)
             await ctx.send(embed=embed)
@@ -36,7 +36,7 @@ class CMDs(commands.Cog):
     @commands.command(name="unhide", description="unhide your name in logs")
     async def unhide_cmd(self, ctx):
         # open users.json
-        with open('/home/watermelo/Desktop/AliceBot/AliceLogs/data/users.json', 'r') as f:
+        with open('data/users.json', 'r') as f:
             users = json.load(f)
         # if user is not hidden
         if ctx.author.name not in users['hidden']:
@@ -47,7 +47,7 @@ class CMDs(commands.Cog):
             # remove user from hidden
             users['hidden'].remove(ctx.author.name)
             # write to users.json
-            with open('/home/watermelo/Desktop/AliceBot/AliceLogs/data/users.json', 'w') as f:
+            with open('data/users.json', 'w') as f:
                 json.dump(users, f, indent=4)
             embed = discord.Embed(title="Success", description="You are no longer hidden!", color=0x00FF00)
             await ctx.send(embed=embed)
