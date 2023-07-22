@@ -138,7 +138,7 @@ class Logs(commands.Cog):
         now = datetime.now()
         time = now.strftime("%H:%M")
         try:
-            self.print_event_message(time, guild.name, "left a server")  # Assuming you want to print the guild name
+            print_event_message(time, guild, "left a server")
         except Exception as e:
             print(f"{Fore.RED}Error: {e}{Fore.RESET}")
 
