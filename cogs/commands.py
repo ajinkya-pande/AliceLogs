@@ -51,6 +51,29 @@ class CMDs(commands.Cog):
                 json.dump(users, f, indent=4)
             embed = discord.Embed(title="Success", description="You are no longer hidden!", color=0x00FF00)
             await ctx.send(embed=embed)
+    
+    # setup command
+    # sets up the bot
+    @commands.command(name="setup", description="setup the bot")
+    @commands.has_permissions(administrator=True)
+    async def setup_cmd(self, ctx):
+        # open guilds.json
+        with open('data/guilds.json', 'r') as f:
+            guilds = json.load(f)
+        # if guild is already setup
+        if ctx.guild.id in guilds['guilds']:
+            embed = discord.Embed(title="Error", description="This guild is already setup!", color=0xFF0000)
+            await ctx.send(embed=embed)
+        # if guild is not setup
+        else:
+            # add guild to guilds
+            guilds['guilds'].append(ctx.guild.id)
+            # write to guilds.json
+            with open('data/guilds.json', 'w') as f:
+                json.dump(guilds, f, indent=4)
+            embed = discord.Embed(title="Success", description="This guild is now setup and will appear in logs.", color=0x00FF00)
+            await ctx.send(embed=embed)
+            print(f"{ctx.guild.name} is now setup")
 
 async def setup(bot):
     await bot.add_cog(CMDs(bot))
