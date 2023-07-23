@@ -4,7 +4,7 @@ from twitchio.ext import commands
 from colorama import Fore, Back, Style
 from datetime import datetime
 from dotenv import load_dotenv
-from backend.log import twitch_event_msg
+from src.backend.log import twitch_event_msg
 
 load_dotenv()
 

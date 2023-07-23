@@ -43,7 +43,7 @@ async def on_ready():
     print(f"{Fore.GREEN}Connected!{Fore.RESET}")
     print(f"{Fore.GREEN}{alicelogs}{Fore.RESET}")
 async def load():
-    for filename in os.listdir('./cogs'):
+    for filename in os.listdir('./src/cogs'):
         if filename.endswith('.py'):
             await client.load_extension(f'cogs.{filename[:-3]}')
 
