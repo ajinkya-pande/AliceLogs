@@ -67,7 +67,7 @@ class CMDs(commands.Cog):
         # if guild is not setup
         else:
             # add guild to guilds
-            guilds['guilds'].append(ctx.guild.id)
+            guilds['guilds'].append(await ctx.guild.fetch(id))
             # write to guilds.json
             with open('data/guilds.json', 'w') as f:
                 json.dump(guilds, f, indent=4)
